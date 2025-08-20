@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ################################################################################
 #
-# Bash PHPStan - Version 1.2 with Enhanced Debugging
+# Bash PHPStan - Version 1.3 with Enhanced Debugging
 #
 # This script fails if the PHPStan output has the word "ERROR" in it.
 #
@@ -28,7 +28,7 @@ source $DIR/helpers/formatters.sh
 source $DIR/helpers/welcome.sh
 source $DIR/helpers/locate.sh
 
-echo -e "${bldgrn}=== PHPStan Debug Script v1.2 ===${txtrst}"
+echo -e "${bldgrn}=== PHPStan Debug Script v1.3 ===${txtrst}"
 hr
 
 # DEBUG: Show which PHPStan is being used
@@ -41,23 +41,33 @@ hr
 
 # DEBUG: Show working directory and config
 echo -e "${bldwht}Working directory:${txtrst}"
-pwd
+echo "Current directory: $(pwd)"
+echo "Script directory: $DIR"
 echo -e "${bldwht}Git info:${txtrst}"
 git rev-parse HEAD 2>/dev/null || echo "Not in git repo"
 git status --porcelain 2>/dev/null | head -5
 hr
 
-# DEBUG: Config files
-echo -e "${bldwht}Looking for phpstan config files:${txtrst}"
-find . -name "phpstan*.neon" -type f 2>/dev/null | head -10
-echo -e "${bldwht}Content of phpstan.neon:${txtrst}"
-if [ -f "phpstan.neon" ]; then
-    cat phpstan.neon
+# DEBUG: Config files - Show content of ALL found neon files
+echo -e "${bldwht}Looking for phpstan config files and their contents:${txtrst}"
+neon_files=$(find . -name "phpstan*.neon" -type f 2>/dev/null | head -10)
+if [ -n "$neon_files" ]; then
+    for neon_file in $neon_files; do
+        echo -e "\n${txtgrn}=== Content of $neon_file ===${txtrst}"
+        cat "$neon_file" | head -30
+        echo -e "${txtgrn}=== End of $neon_file ===${txtrst}\n"
+    done
 else
-    echo "phpstan.neon not found in current directory"
-    echo "Checking parent directories..."
-    find .. -name "phpstan.neon" -type f 2>/dev/null | head -5
+    echo "No phpstan*.neon files found"
 fi
+hr
+
+# DEBUG: Test which config file PHPStan will actually use
+echo -e "${bldwht}Testing which config file PHPStan will use:${txtrst}"
+${exec_command} analyse --help | grep -A2 "configuration" || echo "Could not get help for configuration"
+echo ""
+echo "PHPStan says it's using:"
+${exec_command} analyse --configuration=phpstan.neon --debug 2>&1 | head -20 | grep -E "(Configuration|Using|Loading|Note:)" || echo "No configuration info found"
 hr
 
 # DEBUG: Composer info
