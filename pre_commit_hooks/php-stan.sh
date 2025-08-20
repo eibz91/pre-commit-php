@@ -46,7 +46,7 @@ hr
 # DEBUG: Show exact command being run
 command_files_to_check="${@:2}"
 command_args=$1
-command_to_run="${exec_command} analyse --no-progress ${command_args} ${command_files_to_check}"
+command_to_run="${exec_command} analyse -vvv --no-progress ${command_args} ${command_files_to_check}"
 echo -e "${bldwht}Running command ${txtgrn} ${command_to_run} ${txtrst}"
 hr
 
