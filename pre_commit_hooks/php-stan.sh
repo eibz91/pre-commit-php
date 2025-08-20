@@ -156,13 +156,32 @@ hr
 
 # Run the actual command with extra verbosity to see each file
 echo -e "${bldwht}Running PHPStan with maximum verbosity...${txtrst}"
-echo "This will show each file as it's analyzed:"
+echo "Starting at: $(date)"
+start_time=$(date +%s)
+
+# Capture the full output
+echo "Executing: $command_to_run"
 command_result=`eval $command_to_run -vvv 2>&1`
 exit_code=$?
+
+end_time=$(date +%s)
+echo "Finished at: $(date)"
+echo "Total time: $((end_time - start_time)) seconds"
 
 # DEBUG: Always show the output for debugging
 echo -e "${bldwht}PHPStan output:${txtrst}"
 echo "$command_result"
+
+# Analyze what files were processed
+echo -e "\n${bldwht}Files analyzed count:${txtrst}"
+echo "$command_result" | grep -E "^/" | wc -l
+
+echo -e "\n${bldwht}Unique files analyzed:${txtrst}"
+echo "$command_result" | grep -E "^/" | sort | uniq | head -20
+
+echo -e "\n${bldwht}Memory consumption per file:${txtrst}"
+echo "$command_result" | grep -E "consumed.*MB" | head -10
+
 echo -e "\nExit code: $exit_code"
 hr
 
