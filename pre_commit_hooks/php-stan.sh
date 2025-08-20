@@ -1,3 +1,21 @@
+#!/usr/bin/env bash
+################################################################################
+#
+# Bash PHPStan
+#
+# This script fails if the PHPStan output has the word "ERROR" in it.
+#
+# Exit 0 if no errors found
+# Exit 1 if errors were found
+#
+# Requires
+# - php
+#
+# Arguments
+# See: https://phpstan.org/user-guide/command-line-usage
+#
+################################################################################
+# Plugin title
 title="PHPStan"
 # Possible command names of this tool
 local_command="phpstan.phar"
