@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ################################################################################
 #
-# Bash PHPStan - Version 1.4 with Path Fix and Enhanced Verbosity
+# Bash PHPStan - Version 1.5 with Detailed Timing and SOAP Validation
 #
 # This script fails if the PHPStan output has the word "ERROR" in it.
 #
@@ -21,22 +21,36 @@ title="PHPStan"
 local_command="phpstan.phar"
 vendor_command="api/v2/vendor/bin/phpstan"  # Changed to use api/v2/vendor
 global_command="phpstan"
+
+# Start timing
+script_start=$(date +%s)
+echo "=== SCRIPT STARTED AT: $(date) ==="
+
 # Print a welcome and locate the exec for this tool
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $DIR/helpers/colors.sh
 source $DIR/helpers/formatters.sh
 source $DIR/helpers/welcome.sh
-source $DIR/helpers/locate.sh
 
-echo -e "${bldgrn}=== PHPStan Debug Script v1.4 ===${txtrst}"
+echo "Time before locate: $(date)"
+locate_start=$(date +%s)
+source $DIR/helpers/locate.sh
+locate_end=$(date +%s)
+echo "Locate took: $((locate_end - locate_start)) seconds"
+
+echo -e "${bldgrn}=== PHPStan Debug Script v1.5 ===${txtrst}"
 hr
 
 # DEBUG: Show which PHPStan is being used
+echo "Time before version check: $(date)"
+version_start=$(date +%s)
 echo -e "${bldwht}PHPStan location and version:${txtrst}"
 which phpstan || echo "Global phpstan not found"
 echo "Using: ${exec_command}"
 ${exec_command} --version
 echo "Full path: $(readlink -f ${exec_command} 2>/dev/null || echo ${exec_command})"
+version_end=$(date +%s)
+echo "Version check took: $((version_end - version_start)) seconds"
 hr
 
 # DEBUG: Show working directory and config
@@ -49,6 +63,8 @@ git status --porcelain 2>/dev/null | head -5
 hr
 
 # DEBUG: Config files - Show content of ALL found neon files
+echo "Time before config search: $(date)"
+config_start=$(date +%s)
 echo -e "${bldwht}Looking for phpstan config files and their contents:${txtrst}"
 neon_files=$(find . \( -name "phpstan*.neon" -o -name "phpstan-config.neon" \) -type f 2>/dev/null | head -10)
 if [ -n "$neon_files" ]; then
@@ -60,6 +76,8 @@ if [ -n "$neon_files" ]; then
 else
     echo "No phpstan*.neon or phpstan-config.neon files found"
 fi
+config_end=$(date +%s)
+echo "Config search took: $((config_end - config_start)) seconds"
 hr
 
 # DEBUG: Test which config file PHPStan will actually use
@@ -82,23 +100,46 @@ fi
 hr
 
 # DEBUG: Clear cache
+echo "Time before cache clear: $(date)"
+cache_start=$(date +%s)
 echo -e "${bldwht}Clearing PHPStan cache:${txtrst}"
 ${exec_command} clear-result-cache 2>&1 || echo "Could not clear cache"
 # Also try to find and clear cache directory
 echo "Looking for cache directories:"
 find ~/.phpstan ~/.cache -name "*phpstan*" -type d 2>/dev/null | head -5
+cache_end=$(date +%s)
+echo "Cache clear took: $((cache_end - cache_start)) seconds"
 hr
 
-# DEBUG: PHP Environment
+# DEBUG: PHP Environment with detailed SOAP check
 echo -e "${bldwht}PHP Environment:${txtrst}"
 php -v
 echo -e "\nPHP Extensions:"
 php -m | grep -E "(soap|Soap|SOAP)" || echo "SOAP not found in php -m"
+
+echo -e "\n${bldwht}Detailed SOAP Extension Check:${txtrst}"
+php -r "
+echo 'SOAP extension loaded: ' . (extension_loaded('soap') ? 'YES' : 'NO') . PHP_EOL;
+echo 'SoapClient class exists: ' . (class_exists('SoapClient') ? 'YES' : 'NO') . PHP_EOL;
+if (class_exists('SoapClient')) {
+    \$reflection = new ReflectionClass('SoapClient');
+    echo 'SoapClient file: ' . \$reflection->getFileName() . PHP_EOL;
+    echo 'SoapClient methods count: ' . count(\$reflection->getMethods()) . PHP_EOL;
+} else {
+    echo 'Cannot reflect on SoapClient - class does not exist' . PHP_EOL;
+}
+"
+
+echo -e "\nSOAP configuration from php.ini:"
+php -i | grep -A5 -B5 soap || echo "No SOAP configuration found"
+
 echo -e "\nPHP ini files:"
 php --ini | head -5
 hr
 
 # DEBUG: Check file encoding and content
+echo "Time before file analysis: $(date)"
+file_start=$(date +%s)
 echo -e "${bldwht}File analysis for stpmex.php:${txtrst}"
 if [ -f "api/v2/helpers/stpmex/stpmex.php" ]; then
     echo "File exists: YES"
@@ -118,6 +159,8 @@ else
     echo "Looking for stpmex.php in other locations:"
     find . -name "stpmex.php" -type f 2>/dev/null
 fi
+file_end=$(date +%s)
+echo "File analysis took: $((file_end - file_start)) seconds"
 hr
 
 # DEBUG: Environment variables
@@ -156,17 +199,17 @@ hr
 
 # Run the actual command with extra verbosity to see each file
 echo -e "${bldwht}Running PHPStan with maximum verbosity...${txtrst}"
-echo "Starting at: $(date)"
-start_time=$(date +%s)
+echo "Starting PHPStan at: $(date)"
+phpstan_start=$(date +%s)
 
 # Capture the full output
 echo "Executing: $command_to_run"
 command_result=`eval $command_to_run -vvv 2>&1`
 exit_code=$?
 
-end_time=$(date +%s)
-echo "Finished at: $(date)"
-echo "Total time: $((end_time - start_time)) seconds"
+phpstan_end=$(date +%s)
+echo "Finished PHPStan at: $(date)"
+echo "PHPStan analysis took: $((phpstan_end - phpstan_start)) seconds"
 
 # DEBUG: Always show the output for debugging
 echo -e "${bldwht}PHPStan output:${txtrst}"
@@ -190,8 +233,26 @@ if [[ $command_result =~ ERROR ]]
 then
     echo -en "${bldmag}Errors detected by ${title}... ${txtrst} \n"
     echo "String 'ERROR' found in output"
-    exit 1
+    exit_result=1
+else
+    echo -e "${bldgrn}No errors detected${txtrst}"
+    exit_result=$exit_code
 fi
 
-echo -e "${bldgrn}No errors detected${txtrst}"
-exit $exit_code
+# Final timing summary
+script_end=$(date +%s)
+total_time=$((script_end - script_start))
+echo -e "\n${bldwht}=== TIMING SUMMARY ===${txtrst}"
+echo "Script started: $(date -d @$script_start 2>/dev/null || date -r $script_start)"
+echo "Script ended: $(date)"
+echo "Total script time: ${total_time} seconds"
+echo "Time breakdown:"
+echo "  - Locate: $((locate_end - locate_start))s"
+echo "  - Version check: $((version_end - version_start))s"
+echo "  - Config search: $((config_end - config_start))s"
+echo "  - Cache clear: $((cache_end - cache_start))s"
+echo "  - File analysis: $((file_end - file_start))s"
+echo "  - PHPStan analysis: $((phpstan_end - phpstan_start))s"
+echo "  - Other operations: $((total_time - (locate_end - locate_start) - (version_end - version_start) - (config_end - config_start) - (cache_end - cache_start) - (file_end - file_start) - (phpstan_end - phpstan_start)))s"
+
+exit $exit_result
