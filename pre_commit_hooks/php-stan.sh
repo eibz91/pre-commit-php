@@ -50,7 +50,7 @@ hr
 
 # DEBUG: Config files - Show content of ALL found neon files
 echo -e "${bldwht}Looking for phpstan config files and their contents:${txtrst}"
-neon_files=$(find . -name "phpstan*.neon" -type f 2>/dev/null | head -10)
+neon_files=$(find . \( -name "phpstan*.neon" -o -name "phpstan-config.neon" \) -type f 2>/dev/null | head -10)
 if [ -n "$neon_files" ]; then
     for neon_file in $neon_files; do
         echo -e "\n${txtgrn}=== Content of $neon_file ===${txtrst}"
@@ -58,7 +58,7 @@ if [ -n "$neon_files" ]; then
         echo -e "${txtgrn}=== End of $neon_file ===${txtrst}\n"
     done
 else
-    echo "No phpstan*.neon files found"
+    echo "No phpstan*.neon or phpstan-config.neon files found"
 fi
 hr
 
@@ -67,7 +67,7 @@ echo -e "${bldwht}Testing which config file PHPStan will use:${txtrst}"
 ${exec_command} analyse --help | grep -A2 "configuration" || echo "Could not get help for configuration"
 echo ""
 echo "PHPStan says it's using:"
-${exec_command} analyse --configuration=phpstan.neon --debug 2>&1 | head -20 | grep -E "(Configuration|Using|Loading|Note:)" || echo "No configuration info found"
+${exec_command} analyse --configuration=phpstan-config.neon --debug 2>&1 | head -20 | grep -E "(Configuration|Using|Loading|Note:)" || echo "No configuration info found"
 hr
 
 # DEBUG: Composer info
@@ -132,6 +132,15 @@ echo -e "${bldwht}Command construction:${txtrst}"
 echo "exec_command: ${exec_command}"
 echo "command_args: ${command_args}"
 echo "files_to_check: ${command_files_to_check}"
+
+# Replace any phpstan.neon references with phpstan-config.neon
+command_args=$(echo "$command_args" | sed 's/phpstan\.neon/phpstan-config.neon/g')
+command_files_to_check=$(echo "$command_files_to_check" | sed 's/phpstan\.neon/phpstan-config.neon/g')
+
+# If no --configuration is present, add it
+if [[ ! "$command_args" =~ "--configuration" ]] && [[ ! "$command_files_to_check" =~ "--configuration" ]]; then
+    command_args="$command_args --configuration=phpstan-config.neon"
+fi
 
 # Remove --no-progress and add more verbosity
 # Also ensure we're using api/v2/vendor/bin/phpstan explicitly
