@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ################################################################################
 #
-# Bash PHPStan - Version 1.3 with Enhanced Debugging
+# Bash PHPStan - Version 1.4 with Path Fix and Enhanced Verbosity
 #
 # This script fails if the PHPStan output has the word "ERROR" in it.
 #
@@ -19,7 +19,7 @@
 title="PHPStan"
 # Possible command names of this tool
 local_command="phpstan.phar"
-vendor_command="vendor/bin/phpstan"
+vendor_command="api/v2/vendor/bin/phpstan"  # Changed to use api/v2/vendor
 global_command="phpstan"
 # Print a welcome and locate the exec for this tool
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -28,7 +28,7 @@ source $DIR/helpers/formatters.sh
 source $DIR/helpers/welcome.sh
 source $DIR/helpers/locate.sh
 
-echo -e "${bldgrn}=== PHPStan Debug Script v1.3 ===${txtrst}"
+echo -e "${bldgrn}=== PHPStan Debug Script v1.4 ===${txtrst}"
 hr
 
 # DEBUG: Show which PHPStan is being used
@@ -132,14 +132,23 @@ echo -e "${bldwht}Command construction:${txtrst}"
 echo "exec_command: ${exec_command}"
 echo "command_args: ${command_args}"
 echo "files_to_check: ${command_files_to_check}"
-command_to_run="${exec_command} analyse --no-progress ${command_args} ${command_files_to_check}"
+
+# Remove --no-progress and add more verbosity
+# Also ensure we're using api/v2/vendor/bin/phpstan explicitly
+if [[ "${exec_command}" != "api/v2/vendor/bin/phpstan" ]]; then
+    echo "Forcing use of api/v2/vendor/bin/phpstan"
+    exec_command="api/v2/vendor/bin/phpstan"
+fi
+
+command_to_run="${exec_command} analyse ${command_args} ${command_files_to_check}"
 echo -e "${bldwht}Full command:${txtrst}"
 echo "${command_to_run}"
 hr
 
-# Run the actual command
-echo -e "${bldwht}Running PHPStan...${txtrst}"
-command_result=`eval $command_to_run 2>&1`
+# Run the actual command with extra verbosity to see each file
+echo -e "${bldwht}Running PHPStan with maximum verbosity...${txtrst}"
+echo "This will show each file as it's analyzed:"
+command_result=`eval $command_to_run -vvv 2>&1`
 exit_code=$?
 
 # DEBUG: Always show the output for debugging
