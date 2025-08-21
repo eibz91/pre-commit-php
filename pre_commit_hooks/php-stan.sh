@@ -196,7 +196,7 @@ if [[ "${exec_command}" != "api/v2/vendor/bin/phpstan" ]]; then
     exec_command="api/v2/vendor/bin/phpstan"
 fi
 
-command_to_run="${exec_command} analyse ${command_args} ${command_files_to_check}"
+command_to_run="${exec_command} analyse ${command_args}"
 echo -e "${bldwht}Full command:${txtrst}"
 echo "${command_to_run}"
 hr
