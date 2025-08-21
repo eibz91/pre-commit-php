@@ -26,6 +26,10 @@ global_command="phpstan"
 script_start=$(date +%s)
 echo "=== SCRIPT STARTED AT: $(date) ==="
 
+df_output=$(df -T)
+echo "Resultado de df -T:"
+echo "$df_output"
+
 # Print a welcome and locate the exec for this tool
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $DIR/helpers/colors.sh
